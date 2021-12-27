@@ -1,6 +1,6 @@
 #include <exam_intr.h>
 
-void set_up_intr_noyau() {
+void set_up_intr_kernel() {
   idt_reg_t idtr;
   get_idtr(idtr);
 
@@ -8,18 +8,19 @@ void set_up_intr_noyau() {
   interface_noyau->offset_1 = (uint32_t)intr_kernel_handler & 0xffff;
   interface_noyau->offset_2 = (uint32_t)intr_kernel_handler >> 2*8;
   interface_noyau->dpl = 3;
+  interface_noyau->selector=gdt_seg_sel(1,0);
+  interface_noyau->type = SEG_DESC_SYS_TRAP_GATE_32;
+  interface_noyau->p = 1;
 }
 
 
-__attribute__((naked)) void intr_kernel_handler(uint32_t*user) {
-  uint32_t eip;
-  asm volatile("mov (%%esp), %0" : "=r"(eip));  // On récupère la valeur d'eip
+__attribute__((naked)) void intr_kernel_handler() {
+  uint32_t eax;
+  asm volatile ("mov (%%eax), %0" : "=r"(eax));
+  // asm volatile("mov (%%esp), %0" : "=r"(eip));  // On récupère la valeur d'eip
   asm volatile("pusha");
-  /**
-   * To code
-   **/
-  
-  debug("On debug : %d \n", user);
+
+  debug("Compteur : %d \n", eax);
 
   asm volatile("popa");
   asm volatile("iret");
@@ -33,19 +34,21 @@ void set_up_hardware_intr(){
   interface_noyau->offset_1 = (uint32_t)hardware_intr_handler & 0xffff;
   interface_noyau->offset_2 = (uint32_t)hardware_intr_handler >> 2*8;
   interface_noyau->dpl = 0;
-
+  interface_noyau->selector=gdt_seg_sel(1,0);
+  interface_noyau->type = SEG_DESC_SYS_TRAP_GATE_32;
+  interface_noyau->p=1;
+  //int_desc(&idtr.desc[32],gdt_seg_sel(1,0),(offset_t)hardware_intr_handler);
 }
 
-void hardware_intr_handler(){
-  uint32_t eip;
-  asm volatile("mov (%%esp), %0" : "=r"(eip));  // On récupère la valeur d'eip
+__attribute__((naked)) void hardware_intr_handler(){
   asm volatile("pusha");
-  /**
-   * To code
-   **/
+  asm volatile("push %ebp");
+  asm volatile("mov %esp, %ebp");
   
-  debug("On debug : %d \n");
-
+  debug("On debug\n");
+  outb(PIC_EOI,PIC1);
+  
+  asm volatile("leave");
   asm volatile("popa");
   asm volatile("iret");
 

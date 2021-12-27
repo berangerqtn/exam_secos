@@ -43,7 +43,7 @@ void init_segmentation() {
   // DATA RW RING 3
   table[4] =
       create_segment(0xFFFFF, 0x0, SEG_DESC_DATA_RW, 1, 3, 1, 0, 0, 1, 1);
-  table[5] = create_segment(0xFFFFF, 0x0, SEG_DESC_SYS_TSS_AVL_32, 0, 0, 0b1, 0,
+  table[5] = create_segment(sizeof(tss_t)-1, 0x0, SEG_DESC_SYS_TSS_AVL_32, 0, 0, 0b1, 0,
                             0, 0, 0);
 
   gdtr.desc = table;

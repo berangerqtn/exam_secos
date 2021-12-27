@@ -5,14 +5,26 @@ void enable_paging(){
   set_cr0(cr0|CR0_PG);
 }
 
+void print_pgd(pde32_t *tab){
+  for (uint32_t i=0;i<PDE32_PER_PD;i++){
+    printf("Entry n%d, Addr : %x, DPL : %d\n",i, tab[i].addr<<12, tab[i].lvl);
+    print_pte((pte32_t *)(tab[i].addr<<12), i);
+  }
+}
+
+void print_pte(pte32_t *pte, uint32_t index){
+  for (uint32_t i=0; i<PTE32_PER_PT;i++){
+    printf("ID %d : AddrPhy : %x, AddrVirt : %x, DPL : %d\n", i, pte[i].addr<<12, (i | (index<<10)) << 12, pte[i].lvl);
+  }
+}
+
 void show_cr3()
 {
   cr3_reg_t cr3 = {.raw = get_cr3()};
   debug("CR3 = %p\n", cr3.raw);
 }
 
-void init_paging(){
-  int i;
-  pde32_t *pgd = (pde32_t*)0x600000;
-  pte32_t *ptb = (pte32_t*)0x601000;
+void set_up_paging(){
+    
+
 }

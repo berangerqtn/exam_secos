@@ -12,7 +12,10 @@
 
 void enable_paging();
 void show_cr3();
-void init_paging();
+void print_pgd(pde32_t*tab);
+void print_pte(pte32_t *pte, uint32_t index);
+
+void set_up_paging();
 
 
 #endif // EXAM_PAGING
