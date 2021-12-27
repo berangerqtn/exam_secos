@@ -25,6 +25,9 @@ void show_cr3()
 }
 
 void set_up_paging(){
-    
+  pde32_t* user1_pde = (pde32_t*)0x20000;
+  pde32_t* user2_pde = (pde32_t*)0x30000;
+  pde32_t* kernel_pde = (pde32_t*)0x40000;
 
+  // Dans chacun des pde, on a plusieurs pte. 
 }
