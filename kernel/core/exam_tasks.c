@@ -1,4 +1,5 @@
 #include <exam_tasks.h> 
+#include <exam_paging.h>
 
 // Variables globales à mettre dans la mémoire partagée.
 uint32_t* ADDR_COUNTER = (uint32_t*)0x8888;
@@ -13,7 +14,14 @@ void sys_counter_incr(uint32_t* addr_counter){
     (*addr_counter)++;
 }
 
-void user1(){
+utask_t tasks[2];
+
+void init_task(){
+    tasks[0].pgd_addr=USER1_PGD;
+    tasks[1].pgd_addr=USER2_PGD;
+}
+
+__attribute__((section(".user1"))) void user1(){
     *ADDR_COUNTER=0;
     while (true)
     {
@@ -22,12 +30,10 @@ void user1(){
             sys_counter_incr(ADDR_COUNTER);
             mut_counter=0;
         }
-
-    }
-    
+    } 
 }
 
-void user2(){
+__attribute__((section(".user2"))) void user2(){
     while (true)
     {
         if (mut_counter==0)
@@ -35,10 +41,8 @@ void user2(){
             mut_counter=1;
             sys_counter(ADDR_COUNTER);
             mut_counter=0;
-        }
-        
+        }   
     }
-    
-
 }
+
 

@@ -7,9 +7,13 @@
 
 #include <types.h>
 typedef struct user_task{
-    
-    
+    uint32_t eip;
+    uint32_t esp_user;
+    uint32_t esp_kernel;
+    uint32_t pgd_addr;     
 }__attribute__((packed)) utask_t ;
+
+void init_task();
 
 void task1();
 
