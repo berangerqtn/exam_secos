@@ -20,15 +20,15 @@ void tp()
   set_up_intr_kernel();
   set_up_hardware_intr();
   sys_counter(&var);
-  set_up_paging();  
+
+  set_up_paging();
+
+  init_tasks();
+
+  enable_paging();
+    
   force_interrupts_on();
-  
-  while(true){  
 
-  }
-
-  // Paging set up.
-  //set_up_paging();
-  //enable_paging();
+  while(true){}
 
 }
