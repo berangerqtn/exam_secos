@@ -15,11 +15,13 @@ void tp()
   init_segmentation();
   print_gdtr();
 
+  //Test syscall for printing
   uint32_t var = 12;
   set_up_intr_kernel();
   set_up_hardware_intr();
   sys_counter(&var);
 
+  //Segmentation setup
   set_up_paging();
 
   init_tasks();

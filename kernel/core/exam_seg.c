@@ -50,7 +50,7 @@ void init_segmentation() {
   
   memset((void*)TSS_ADDR, 0, sizeof(tss_t));
   tss->s0.esp=get_ebp();
-  tss->s0.ss=gdt_seg_sel(CODE_SEG_R0,0);
+  tss->s0.ss=gdt_seg_sel(DATA_SEG_R0,0);
   gdtr.desc = table;
   gdtr.limit = 6 * sizeof(seg_desc_t) - 1;
   set_gdtr(gdtr);

@@ -42,7 +42,6 @@ void set_up_hardware_intr(){
   int_desc(&idtr.desc[32],gdt_seg_sel(1,0),(offset_t)hardware_intr_handler);
   interface_noyau->dpl = 0;
   interface_noyau->type = SEG_DESC_SYS_TRAP_GATE_32;
-
   //interface_noyau->offset_1 = (uint32_t)hardware_intr_handler & 0xffff;
   //interface_noyau->offset_2 = (uint32_t)hardware_intr_handler >> 2*8;
   //interface_noyau->selector=gdt_seg_sel(1,0);
@@ -52,24 +51,21 @@ void set_up_hardware_intr(){
 void hardware_intr_handler(){
   
   outb(PIC_EOI,PIC1);
-  force_interrupts_on();
 
   tss_t* tss=(tss_t*)TSS_ADDR;
 
   if (my_tasks.current==0){
     my_tasks.current=1;
-    //debug("Lancement des taches\n");
   }
 
   else if ((my_tasks.current==1) | (my_tasks.current==2)){
 
-        //debug("On repasse en Ring3\n");
     set_ds(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
     set_es(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
     set_fs(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
     set_gs(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
 
-    //debug("Récupération du contexte actuel\n\n");
+    // Saving actual context
     asm volatile("mov (%%eax), %0" : "=r"(my_tasks.tasks[my_tasks.current-1].eax));
     asm volatile("mov (%%ebx), %0" : "=r"(my_tasks.tasks[my_tasks.current-1].ebx));
     asm volatile("mov (%%ecx), %0" : "=r"(my_tasks.tasks[my_tasks.current-1].ecx));
@@ -80,14 +76,9 @@ void hardware_intr_handler(){
     asm volatile("mov (%%ebp), %0" : "=r"(my_tasks.tasks[my_tasks.current-1].ebp));
     asm volatile ("mov 4(%%ebp), %0":"=r"(my_tasks.tasks[my_tasks.current-1].eip));
 
-    // On prépare le switch vers l'autre tâche
+    // Preparing switch to next task
     my_tasks.current=(my_tasks.current+2)%2 +1;
-    /*if (my_tasks.current==1){
-      my_tasks.current++;
-    }
-    else if (my_tasks.current==2){
-      my_tasks.current--;
-    }*/
+
 
     asm volatile ("mov %0, %%esp"::"r"(my_tasks.tasks[my_tasks.current-1].esp_kernel));
     asm volatile ("mov %0, %%ebp"::"r"(my_tasks.tasks[my_tasks.current-1].ebp));
@@ -99,11 +90,7 @@ void hardware_intr_handler(){
     asm volatile ("mov %0, %%edi"::"r"(my_tasks.tasks[my_tasks.current-1].edi));
   }
   
-  //debug("On debug\n");
-
-  //printf("Adresse de user1 : %x\n Tâche en cours : %d", user1, my_tasks.current);
-  //printf("Prochaine tache user%d\n Adresse : %x\n", my_tasks.current, my_tasks.tasks[my_tasks.current-1].eip);
-
+  // Set tss for nex task
   tss->s0.esp = my_tasks.tasks[my_tasks.current-1].esp_kernel;
   set_cr3(my_tasks.tasks[my_tasks.current-1].pgd_addr);
 
@@ -114,11 +101,7 @@ void hardware_intr_handler(){
   // Flags
   asm volatile("pushf\n");
 
-  /*asm volatile("pop %0":"=m"(my_tasks.tasks[my_tasks.current-1].eflags));
-  my_tasks.tasks[my_tasks.current-1].eflags = my_tasks.tasks[my_tasks.current-1].eflags | EFLAGS_IF;
-  asm volatile("push %0"::"m"(my_tasks.tasks[my_tasks.current].eflags));*/
-
-  asm volatile("push %0" ::"i"(gdt_seg_sel(3, 3)));
+  asm volatile("push %0" ::"i"(gdt_seg_sel(CODE_SEG_R3, 3)));
   asm volatile("push %%ebx" ::"b"((void*)my_tasks.tasks[my_tasks.current-1].eip));
 
   asm volatile("iret");
