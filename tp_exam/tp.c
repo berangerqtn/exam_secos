@@ -27,7 +27,8 @@ void tp()
   enable_paging();
     
   force_interrupts_on();
-
-  while(true){}
+  
+  while(true){
+  }
 
 }

@@ -1,6 +1,7 @@
 #include <exam_intr.h>
 #include <exam_tasks.h>
 #include <exam_seg.h>
+#include <asm.h>
 
 uint32_t counter;
 
@@ -9,12 +10,13 @@ void set_up_intr_kernel() {
   get_idtr(idtr);
 
   int_desc_t *interface_noyau = &idtr.desc[0x80];
-  interface_noyau->offset_1 = (uint32_t)intr_kernel_handler & 0xffff;
-  interface_noyau->offset_2 = (uint32_t)intr_kernel_handler >> 2*8;
+  int_desc(&idtr.desc[0x80],gdt_seg_sel(CODE_SEG_R0,0),(offset_t)intr_kernel_handler);
   interface_noyau->dpl = 3;
-  interface_noyau->selector=gdt_seg_sel(1,0);
   interface_noyau->type = SEG_DESC_SYS_TRAP_GATE_32;
-  interface_noyau->p = 1;
+  //interface_noyau->offset_1 = (uint32_t)intr_kernel_handler & 0xffff;
+  //interface_noyau->offset_2 = (uint32_t)intr_kernel_handler >> 2*8;
+  //interface_noyau->selector=gdt_seg_sel(CODE_SEG_R0,0);
+  //interface_noyau->p = 1;
 }
 
 
@@ -37,30 +39,35 @@ void set_up_hardware_intr(){
   get_idtr(idtr);
 
   int_desc_t *interface_noyau = &idtr.desc[32];
-  interface_noyau->offset_1 = (uint32_t)hardware_intr_handler & 0xffff;
-  interface_noyau->offset_2 = (uint32_t)hardware_intr_handler >> 2*8;
+  int_desc(&idtr.desc[32],gdt_seg_sel(1,0),(offset_t)hardware_intr_handler);
   interface_noyau->dpl = 0;
-  interface_noyau->selector=gdt_seg_sel(1,0);
   interface_noyau->type = SEG_DESC_SYS_TRAP_GATE_32;
-  interface_noyau->p=1;
-  //int_desc(&idtr.desc[32],gdt_seg_sel(1,0),(offset_t)hardware_intr_handler);
+
+  //interface_noyau->offset_1 = (uint32_t)hardware_intr_handler & 0xffff;
+  //interface_noyau->offset_2 = (uint32_t)hardware_intr_handler >> 2*8;
+  //interface_noyau->selector=gdt_seg_sel(1,0);
+  //interface_noyau->p=1;
 }
 
 void hardware_intr_handler(){
   
   outb(PIC_EOI,PIC1);
+  force_interrupts_on();
 
   tss_t* tss=(tss_t*)TSS_ADDR;
 
   if (my_tasks.current==0){
     my_tasks.current=1;
     //debug("Lancement des taches\n");
-    my_tasks.tasks[my_tasks.current-1].eip=user1;
-    my_tasks.tasks[my_tasks.current].eip=user2;
-
   }
 
   else if ((my_tasks.current==1) | (my_tasks.current==2)){
+
+        //debug("On repasse en Ring3\n");
+    set_ds(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
+    set_es(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
+    set_fs(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
+    set_gs(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
 
     //debug("Récupération du contexte actuel\n\n");
     asm volatile("mov (%%eax), %0" : "=r"(my_tasks.tasks[my_tasks.current-1].eax));
@@ -71,20 +78,16 @@ void hardware_intr_handler(){
     asm volatile("mov (%%edi), %0" : "=r"(my_tasks.tasks[my_tasks.current-1].edi));
     asm volatile("mov (%%esp), %0" : "=r"(my_tasks.tasks[my_tasks.current-1].esp_kernel));
     asm volatile("mov (%%ebp), %0" : "=r"(my_tasks.tasks[my_tasks.current-1].ebp));
-
-    //debug("On repasse en Ring3\n");
-    set_ds(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
-    set_es(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
-    set_fs(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
-    set_gs(gdt_seg_sel(DATA_SEG_R3,SEG_SEL_USR));
+    asm volatile ("mov 4(%%ebp), %0":"=r"(my_tasks.tasks[my_tasks.current-1].eip));
 
     // On prépare le switch vers l'autre tâche
-    if (my_tasks.current==1){
+    my_tasks.current=(my_tasks.current+2)%2 +1;
+    /*if (my_tasks.current==1){
       my_tasks.current++;
     }
     else if (my_tasks.current==2){
       my_tasks.current--;
-    }
+    }*/
 
     asm volatile ("mov %0, %%esp"::"r"(my_tasks.tasks[my_tasks.current-1].esp_kernel));
     asm volatile ("mov %0, %%ebp"::"r"(my_tasks.tasks[my_tasks.current-1].ebp));
@@ -107,9 +110,16 @@ void hardware_intr_handler(){
   
   asm volatile("push %0" ::"i"(gdt_seg_sel(4, 3)));
   asm volatile("push %0"::"r"(my_tasks.tasks[my_tasks.current-1].esp_user));
+  
+  // Flags
   asm volatile("pushf\n");
+
+  /*asm volatile("pop %0":"=m"(my_tasks.tasks[my_tasks.current-1].eflags));
+  my_tasks.tasks[my_tasks.current-1].eflags = my_tasks.tasks[my_tasks.current-1].eflags | EFLAGS_IF;
+  asm volatile("push %0"::"m"(my_tasks.tasks[my_tasks.current].eflags));*/
+
   asm volatile("push %0" ::"i"(gdt_seg_sel(3, 3)));
-  asm volatile("push %%ebx" ::"b"(my_tasks.tasks[my_tasks.current-1].eip));
+  asm volatile("push %%ebx" ::"b"((void*)my_tasks.tasks[my_tasks.current-1].eip));
 
   asm volatile("iret");
 
