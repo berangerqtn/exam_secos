@@ -6,7 +6,7 @@ void enable_paging(){
 }
 
 void print_pgd(pde32_t *tab){
-  for (uint32_t i=0;i<PDE32_PER_PD;i++){
+  for (uint32_t i=1023;i<PDE32_PER_PD;i++){
     printf("Entry n%d, Addr : %x, LVL : %d\n",i, tab[i].addr<<12, tab[i].lvl);
     print_pte((pte32_t *)(tab[i].addr<<12), i);
   }
@@ -38,10 +38,13 @@ void set_up_paging(){
   generate_pgd(pgd_kernel, kernel_ptbs , PG_KRN);
   generate_pgd(pgd_u1,user1_ptbs,PG_USR);
   generate_pgd(pgd_u2,user2_ptbs,PG_USR);
-  
-  print_pgd(pgd_kernel);
-  print_pgd(pgd_u1);
-  print_pgd(pgd_u2);
+
+  pg_set_entry(&user1_ptbs[1023*1024 + 1021], PG_KRN|PG_RW, 1021 + (1023<<10));
+  pg_set_entry(&user2_ptbs[1023*1024 + 1023], PG_KRN|PG_RW, 1023 + (1023<<10));
+    
+  //print_pgd(pgd_kernel);
+  //print_pgd(pgd_u1);
+  //print_pgd(pgd_u2);
 
   set_cr3(pgd_kernel);
 

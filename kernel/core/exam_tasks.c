@@ -14,21 +14,16 @@ void sys_counter_incr(uint32_t* addr_counter){
     (*addr_counter)++;
 }
 
-utask_t tasks[2];
-
-void init_task(){
-    tasks[0].pgd_addr=USER1_PGD;
-    tasks[1].pgd_addr=USER2_PGD;
-}
+utask_t* tasks;
+utasktlist_t my_tasks;
 
 __attribute__((section(".user1"))) void user1(){
     *ADDR_COUNTER=0;
     while (true)
     {
         if(mut_counter==0){
+            *ADDR_COUNTER+=1;
             mut_counter=1;
-            sys_counter_incr(ADDR_COUNTER);
-            mut_counter=0;
         }
     } 
 }
@@ -36,13 +31,29 @@ __attribute__((section(".user1"))) void user1(){
 __attribute__((section(".user2"))) void user2(){
     while (true)
     {
-        if (mut_counter==0)
+        if (mut_counter==1)
         {
-            mut_counter=1;
             sys_counter(ADDR_COUNTER);
             mut_counter=0;
-        }   
+        }
     }
 }
 
+void init_tasks(){
 
+    tasks[0].pgd_addr=USER1_PGD;
+    tasks[0].function_addr = user1;
+    tasks[0].eip = tasks[0].function_addr;
+    tasks[0].esp_kernel = 0xffffd000;
+    tasks[0].esp_user = 0xffffc000;
+
+    tasks[1].pgd_addr=USER2_PGD;
+    tasks[1].function_addr = user2;
+    tasks[1].eip = tasks[1].function_addr;
+    tasks[1].esp_kernel = 0xfffff000;
+    tasks[1].esp_user = 0xffffe000;
+
+    my_tasks.tasks=tasks;
+    
+    my_tasks.current=0;
+}

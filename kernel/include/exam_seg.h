@@ -8,9 +8,17 @@
 #include <segmem.h>
 #include <string.h>
 
-seg_desc_t create_segment(uint64_t limit, uint64_t base, uint64_t type,
-                          uint64_t s, uint64_t dpl, uint64_t p, uint64_t avl,
-                          uint64_t l, uint64_t d, uint64_t g);
+#define CODE_SEG_R0 1
+#define DATA_SEG_R0 2
+#define CODE_SEG_R3 3 
+#define DATA_SEG_R3 4
+#define TSS_SEG 5
+
+#define TSS_ADDR 0x340000
+
+seg_desc_t create_segment(uint32_t limit, uint32_t base, uint32_t type,
+                          uint32_t s, uint32_t dpl, uint32_t p, uint32_t avl,
+                          uint32_t l, uint32_t d, uint32_t g);
 
 void init_segmentation();
  

@@ -2,15 +2,15 @@
 #include <exam_seg.h>
 #include <info.h>
 
-seg_desc_t create_segment(uint64_t limit, uint64_t base, uint64_t type,
-                          uint64_t s, uint64_t dpl, uint64_t p, uint64_t avl,
-                          uint64_t l, uint64_t d, uint64_t g) {
+seg_desc_t create_segment(uint32_t limit, uint32_t base, uint32_t type,
+                          uint32_t s, uint32_t dpl, uint32_t p, uint32_t avl,
+                          uint32_t l, uint32_t d, uint32_t g) {
   seg_desc_t new_seg;
   new_seg.limit_1 = limit;
   new_seg.limit_2 = (limit >> 2 * 8);
   new_seg.base_1 = base;
   new_seg.base_2 = (base >> 2 * 8);
-  new_seg.base_3 = (base >> 4 * 8);
+  new_seg.base_3 = (base >> 3 * 8);
   new_seg.type = type;
   new_seg.s = s;
   new_seg.dpl = dpl;
@@ -22,6 +22,8 @@ seg_desc_t create_segment(uint64_t limit, uint64_t base, uint64_t type,
 
   return new_seg;
 }
+
+tss_t* tss = (tss_t*) TSS_ADDR;
 
 void init_segmentation() {
   gdt_reg_t gdtr;
@@ -43,12 +45,16 @@ void init_segmentation() {
   // DATA RW RING 3
   table[4] =
       create_segment(0xFFFFF, 0x0, SEG_DESC_DATA_RW, 1, 3, 1, 0, 0, 1, 1);
-  table[5] = create_segment(sizeof(tss_t)-1, 0x0, SEG_DESC_SYS_TSS_AVL_32, 0, 0, 0b1, 0,
+  table[5] = create_segment(sizeof(tss_t)-1, TSS_ADDR, SEG_DESC_SYS_TSS_AVL_32, 0, 0, 0b1, 0,
                             0, 0, 0);
-
+  
+  memset((void*)TSS_ADDR, 0, sizeof(tss_t));
+  tss->s0.esp=get_ebp();
+  tss->s0.ss=gdt_seg_sel(CODE_SEG_R0,0);
   gdtr.desc = table;
   gdtr.limit = 6 * sizeof(seg_desc_t) - 1;
   set_gdtr(gdtr);
+
   printf("GDTR CREATED\n");
 
   set_ds(gdt_seg_sel(2, 0));
@@ -57,6 +63,8 @@ void init_segmentation() {
   set_fs(gdt_seg_sel(2, 0));
   set_gs(gdt_seg_sel(2, 0));
   set_cs(gdt_seg_sel(1, 0));
+  set_tr(gdt_seg_sel(TSS_SEG,0));
+
 
   printf("Segment selectors set\n");
 }
